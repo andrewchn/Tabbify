@@ -3,7 +3,7 @@ const RESPONSE_TYPE = encodeURIComponent("token");
 const REDIRECT_URI = encodeURIComponent(
   "https://gmnjbadoghkkkpacagkababjciklnocn.chromiumapp.org/"
 );
-const SCOPE = encodeURIComponent("user-read-email");
+const SCOPE = encodeURIComponent("user-read-email user-follow-read");
 const SHOW_DIALOG = encodeURIComponent("true");
 let STATE = "";
 let ACCESS_TOKEN = "";
@@ -68,6 +68,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                   user_signed_in = false;
                 }, 3600000);
 
+                getMe = GetBody(ACCESS_TOKEN);
+
                 chrome.action.setPopup(
                   { popup: "./popup-signed-in.html" },
                   () => {
@@ -94,3 +96,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+function GetBody(token) {
+  console.log(token);
+  const headers = { 
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + token };
+  fetch('https://api.spotify.com/v1/me/following?type=artist', { headers }).then(r => r.text()).then(result => {
+    console.log(result);
+  });
+}
