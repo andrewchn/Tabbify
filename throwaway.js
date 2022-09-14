@@ -1,3 +1,4 @@
+
 const CLIENT_ID = encodeURIComponent("7fa6d6952688403289c1e0c0a4ffbcdf");
 const RESPONSE_TYPE = encodeURIComponent("token");
 const REDIRECT_URI = encodeURIComponent(
@@ -9,6 +10,11 @@ let STATE = "";
 let ACCESS_TOKEN = "";
 
 let user_signed_in = false;
+
+let selected_song = {
+  "artist": null,
+  "song": null
+}
 
 function create_spotify_endpoint() {
   STATE = encodeURIComponent(
@@ -48,6 +54,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             if (redirect_url.includes("callback?error=access_denied")) {
               sendResponse({ message: "fail" });
             } else {
+              console.log(redirect_url);
               ACCESS_TOKEN = redirect_url.substring(
                 redirect_url.indexOf("access_token=") + 13
               );
@@ -68,7 +75,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                   user_signed_in = false;
                 }, 3600000);
 
-                let getMe = GetRandFollowedArtist();
+                let getMe = GetRandomSong(ACCESS_TOKEN);
 
                 chrome.action.setPopup(
                   { popup: "./popup-signed-in.html" },
@@ -96,29 +103,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-async function GetRandFollowedArtist() {
-  try {
-    // console.log(ACCESS_TOKEN);
-    const headers = { 
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + ACCESS_TOKEN };
-    
-    var response = await fetch('https://api.spotify.com/v1/me/following?type=artist', { headers });
-    const data = await response.json();
-    // console.log("data: " + JSON.stringify(data));
+function GetRandomSong(token) {
+  console.log(token);
 
-    let artistList = data["artists"]["items"];
+  const artistHeaders = { 
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer  ${token}` };
 
-    const randArtist = artistList[Math.floor(Math.random() * artistList.length)];
+  console.log(JSON.stringify(artistHeaders));
+  // let artistJson = fetch('https://api.spotify.com/v1/me/following?type=artist', { artistHeaders });
+  // console.log("artistJson: " + JSON.stringify(artistJson));
 
-    console.log(randArtist);
-    return randArtist;
-  } catch (error) {
-    console.log(error);
-  }
+  fetch('https://api.spotify.com/v1/me/following?type=artist', { artistHeaders }).then(r => r.text()).then(result => {
+    console.log(result);
+  });
 }
-
-async function GetRandSong(artist) {
-
-}
+// chrome.tabs.onCreated.addListener(
+//   callback: function,
+// )
