@@ -10,6 +10,8 @@ let ACCESS_TOKEN = "";
 
 let user_signed_in = false;
 
+let SELECTED_SONG = {};
+
 function create_spotify_endpoint() {
   STATE = encodeURIComponent(
     "meet" + Math.random().toString(36).substring(2, 15)
@@ -67,8 +69,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                   ACCESS_TOKEN = "";
                   user_signed_in = false;
                 }, 3600000);
-                
-                GetRandFollowedArtist();
+
+                GenerateSong();
                 chrome.action.setPopup(
                   { popup: "./popup-signed-in.html" },
                   () => {
@@ -116,8 +118,8 @@ async function GetRandFollowedArtist() {
     const randArtist =
       artistList[Math.floor(Math.random() * artistList.length)];
 
-    console.log("artist: ");
-    console.log(randArtist);
+    // console.log("artist: ");
+    // console.log(randArtist);
 
     return GetRandArtistAlbum(randArtist);
   } catch (error) {
@@ -134,21 +136,21 @@ async function GetRandArtistAlbum(artist) {
       "Content-Type": "application/json",
       Authorization: "Bearer " + ACCESS_TOKEN,
     };
-  
+
     var response = await fetch(
       `https://api.spotify.com/v1/artists/${id}/albums`,
       { headers }
     );
     const data = await response.json();
-  
+
     // console.log("data: " + JSON.stringify(data));
-  
+
     let albumList = data["items"];
-  
+
     const randAlbum = albumList[Math.floor(Math.random() * albumList.length)];
 
-    console.log("album: ");
-    console.log(randAlbum);
+    // console.log("album: ");
+    // console.log(randAlbum);
     return GetRandSong(randAlbum);
   } catch (error) {
     console.log(error);
@@ -164,31 +166,36 @@ async function GetRandSong(album) {
       "Content-Type": "application/json",
       Authorization: "Bearer " + ACCESS_TOKEN,
     };
-  
+
     var response = await fetch(
       `	https://api.spotify.com/v1/albums/${id}/tracks`,
       { headers }
     );
     const data = await response.json();
-  
-    // console.log("data: " + JSON.stringify(data));
-  
-    let trackList = data["items"];
-  
-    const randSong = trackList[Math.floor(Math.random() * trackList.length)];
-  
-    console.log("song: ");
-    console.log(randSong);
 
+    // console.log("data: " + JSON.stringify(data));
+
+    let trackList = data["items"];
+
+    const randSong = trackList[Math.floor(Math.random() * trackList.length)];
+
+    // console.log("song: ");
+    // console.log(randSong);
+
+    // SELECTED_SONG = randSong;
     return randSong;
   } catch (error) {
     console.log(error);
   }
 }
 
-// async function GenerateSong() {
-//   let song = await GetRandFollowedArtist();
-//   console.log(song["name"]);
-// }
+async function GenerateSong() {
+    GetRandFollowedArtist().then((r) => {
+    SELECTED_SONG = r;
+    console.log("selected song: " + JSON.stringify(SELECTED_SONG));
+  });
+  // GenerateSongHelper();
+}
+
 
 // chrome.tabs.onCreated.addListener(GenerateSong());
