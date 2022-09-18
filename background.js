@@ -70,7 +70,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                   user_signed_in = false;
                 }, 3600000);
 
-                GenerateSong();
+                // GenerateSong();
                 chrome.action.setPopup(
                   { popup: "./popup-signed-in.html" },
                   () => {
@@ -106,22 +106,21 @@ async function GetRandFollowedArtist() {
       Authorization: "Bearer " + ACCESS_TOKEN,
     };
 
-    var response = await fetch(
-      "https://api.spotify.com/v1/me/following?type=artist",
-      { headers }
-    );
-    const data = await response.json();
-    // console.log("data: " + JSON.stringify(data));
+    return fetch("https://api.spotify.com/v1/me/following?type=artist", {
+      headers,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        // console.log("data: " + JSON.stringify(data));
+        let artistList = data["artists"]["items"];
+        const randArtist =
+          artistList[Math.floor(Math.random() * artistList.length)];
 
-    let artistList = data["artists"]["items"];
+        console.log("artist: ");
+        console.log(randArtist);
 
-    const randArtist =
-      artistList[Math.floor(Math.random() * artistList.length)];
-
-    // console.log("artist: ");
-    // console.log(randArtist);
-
-    return GetRandArtistAlbum(randArtist);
+        return GetRandArtistAlbum(randArtist);
+      });
   } catch (error) {
     console.log(error);
   }
@@ -137,21 +136,20 @@ async function GetRandArtistAlbum(artist) {
       Authorization: "Bearer " + ACCESS_TOKEN,
     };
 
-    var response = await fetch(
-      `https://api.spotify.com/v1/artists/${id}/albums`,
-      { headers }
-    );
-    const data = await response.json();
+    return fetch(`https://api.spotify.com/v1/artists/${id}/albums`, { headers })
+      .then((response) => response.json())
+      .then((data) => {
+        // console.log("data: " + JSON.stringify(data));
 
-    // console.log("data: " + JSON.stringify(data));
+        let albumList = data["items"];
 
-    let albumList = data["items"];
+        const randAlbum =
+          albumList[Math.floor(Math.random() * albumList.length)];
 
-    const randAlbum = albumList[Math.floor(Math.random() * albumList.length)];
-
-    // console.log("album: ");
-    // console.log(randAlbum);
-    return GetRandSong(randAlbum);
+        console.log("album: ");
+        console.log(randAlbum);
+        return GetRandSong(randAlbum);
+      });
   } catch (error) {
     console.log(error);
   }
@@ -167,35 +165,33 @@ async function GetRandSong(album) {
       Authorization: "Bearer " + ACCESS_TOKEN,
     };
 
-    var response = await fetch(
-      `	https://api.spotify.com/v1/albums/${id}/tracks`,
-      { headers }
-    );
-    const data = await response.json();
+    return fetch(`	https://api.spotify.com/v1/albums/${id}/tracks`, { headers })
+      .then((response) => response.json())
+      .then((data) => {
+        // console.log("data: " + JSON.stringify(data));
 
-    // console.log("data: " + JSON.stringify(data));
+        let trackList = data["items"];
 
-    let trackList = data["items"];
+        const randSong =
+          trackList[Math.floor(Math.random() * trackList.length)];
 
-    const randSong = trackList[Math.floor(Math.random() * trackList.length)];
-
-    // console.log("song: ");
-    // console.log(randSong);
-
-    // SELECTED_SONG = randSong;
-    return randSong;
+        // SELECTED_SONG = randSong;
+        // console.log("song: ");
+        // console.log(SELECTED_SONG);
+        return randSong;
+      });
   } catch (error) {
     console.log(error);
   }
 }
 
 async function GenerateSong() {
-    GetRandFollowedArtist().then((r) => {
+  GetRandFollowedArtist().then((r) => {
+    console.log("r");
+    console.log(r);
     SELECTED_SONG = r;
     console.log("selected song: " + JSON.stringify(SELECTED_SONG));
   });
-  // GenerateSongHelper();
 }
 
-
-// chrome.tabs.onCreated.addListener(GenerateSong());
+chrome.tabs.onCreated.addListener(() => GenerateSong());
