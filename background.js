@@ -3,14 +3,17 @@ const RESPONSE_TYPE = encodeURIComponent("token");
 const REDIRECT_URI = encodeURIComponent(
   "https://gmnjbadoghkkkpacagkababjciklnocn.chromiumapp.org/"
 );
-const SCOPE = encodeURIComponent("user-read-email user-follow-read");
+const SCOPE = encodeURIComponent(
+  "user-read-email user-read-private user-follow-read user-top-read user-library-modify playlist-modify-private"
+);
 const SHOW_DIALOG = encodeURIComponent("true");
 let STATE = "";
 let ACCESS_TOKEN = "";
 
 let user_signed_in = false;
 
-let SELECTED_SONG = {};
+let SONG_IMAGE_URL = "";
+let SONG_NAME = "";
 
 function create_spotify_endpoint() {
   STATE = encodeURIComponent(
@@ -25,8 +28,6 @@ function create_spotify_endpoint() {
 &scope=${SCOPE}
 &show_dialog=${SHOW_DIALOG}
 `;
-
-  console.log(oauth2_url);
 
   return oauth2_url;
 }
@@ -62,7 +63,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               );
 
               if (state === STATE) {
-                console.log("SUCCESS");
                 user_signed_in = true;
 
                 setTimeout(() => {
@@ -70,7 +70,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                   user_signed_in = false;
                 }, 3600000);
 
-                // GenerateSong();
+                // GetPlaylists();
                 chrome.action.setPopup(
                   { popup: "./popup-signed-in.html" },
                   () => {
@@ -99,7 +99,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 async function GetRandFollowedArtist() {
   try {
-    // console.log(ACCESS_TOKEN);
     const headers = {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -111,13 +110,9 @@ async function GetRandFollowedArtist() {
     })
       .then((response) => response.json())
       .then((data) => {
-        // console.log("data: " + JSON.stringify(data));
         let artistList = data["artists"]["items"];
         const randArtist =
           artistList[Math.floor(Math.random() * artistList.length)];
-
-        console.log("artist: ");
-        console.log(randArtist);
 
         return GetRandArtistAlbum(randArtist);
       });
@@ -129,7 +124,6 @@ async function GetRandFollowedArtist() {
 async function GetRandArtistAlbum(artist) {
   try {
     let id = artist["uri"].substring(15);
-    // console.log(id);
     const headers = {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -139,15 +133,14 @@ async function GetRandArtistAlbum(artist) {
     return fetch(`https://api.spotify.com/v1/artists/${id}/albums`, { headers })
       .then((response) => response.json())
       .then((data) => {
-        // console.log("data: " + JSON.stringify(data));
-
         let albumList = data["items"];
 
         const randAlbum =
           albumList[Math.floor(Math.random() * albumList.length)];
 
-        console.log("album: ");
-        console.log(randAlbum);
+        SONG_IMAGE_URL = randAlbum["images"][0]["url"];
+        console.log("selected song image: " + JSON.stringify(SONG_IMAGE_URL));
+
         return GetRandSong(randAlbum);
       });
   } catch (error) {
@@ -158,26 +151,20 @@ async function GetRandArtistAlbum(artist) {
 async function GetRandSong(album) {
   try {
     let id = album["id"];
-    // console.log(id);
     const headers = {
       Accept: "application/json",
       "Content-Type": "application/json",
       Authorization: "Bearer " + ACCESS_TOKEN,
     };
 
-    return fetch(`	https://api.spotify.com/v1/albums/${id}/tracks`, { headers })
+    return fetch(`https://api.spotify.com/v1/albums/${id}/tracks`, { headers })
       .then((response) => response.json())
       .then((data) => {
-        // console.log("data: " + JSON.stringify(data));
-
         let trackList = data["items"];
 
         const randSong =
           trackList[Math.floor(Math.random() * trackList.length)];
 
-        // SELECTED_SONG = randSong;
-        // console.log("song: ");
-        // console.log(SELECTED_SONG);
         return randSong;
       });
   } catch (error) {
@@ -187,11 +174,19 @@ async function GetRandSong(album) {
 
 async function GenerateSong() {
   GetRandFollowedArtist().then((r) => {
-    console.log("r");
-    console.log(r);
-    SELECTED_SONG = r;
-    console.log("selected song: " + JSON.stringify(SELECTED_SONG));
+    SONG_NAME = r["name"];
+    console.log("selected song: " + SONG_NAME);
   });
 }
 
-chrome.tabs.onCreated.addListener(() => GenerateSong());
+async function DisplaySong() {
+  var port = chrome.runtime.connect({ name: "chanel" });
+  port.postMessage({ msg: "set-song", name: SONG_NAME, url: SONG_IMAGE_URL });
+  port.onMessage.addListener(function (msg) {
+    if (msg.msg === "song-set") console.log("chanel success");
+  });
+}
+
+chrome.tabs.onCreated.addListener(() => {
+  if (user_signed_in) GenerateSong().then(DisplaySong);
+});
