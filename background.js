@@ -4,7 +4,7 @@ const REDIRECT_URI = encodeURIComponent(
   "https://gmnjbadoghkkkpacagkababjciklnocn.chromiumapp.org/"
 );
 const SCOPE = encodeURIComponent(
-  "user-read-email user-read-private user-follow-read user-top-read user-library-modify playlist-modify-private"
+  "user-read-email user-read-private user-follow-read"
 );
 const SHOW_DIALOG = encodeURIComponent("true");
 let STATE = "";
@@ -14,7 +14,7 @@ let user_signed_in = false;
 
 let SONG_IMAGE_URL = "";
 let SONG_NAME = "";
-
+let NO_FOLLOW = false;
 function create_spotify_endpoint() {
   STATE = encodeURIComponent(
     "meet" + Math.random().toString(36).substring(2, 15)
@@ -111,6 +111,9 @@ async function GetRandFollowedArtist() {
       .then((response) => response.json())
       .then((data) => {
         let artistList = data["artists"]["items"];
+        if (artistList.length === 0) {
+          return {};
+        }
         const randArtist =
           artistList[Math.floor(Math.random() * artistList.length)];
 
@@ -174,19 +177,30 @@ async function GetRandSong(album) {
 
 async function GenerateSong() {
   GetRandFollowedArtist().then((r) => {
-    SONG_NAME = r["name"];
-    console.log("selected song: " + SONG_NAME);
+    if (Object.keys(r).length === 0) {
+      NO_FOLLOW = true;
+    } else {
+      SONG_NAME = r["name"];
+      console.log("selected song: " + SONG_NAME);
+    }
   });
 }
 
-async function DisplaySong() {
-  var port = chrome.runtime.connect({ name: "chanel" });
-  port.postMessage({ msg: "set-song", name: SONG_NAME, url: SONG_IMAGE_URL });
-  port.onMessage.addListener(function (msg) {
-    if (msg.msg === "song-set") console.log("chanel success");
-  });
-}
 
-chrome.tabs.onCreated.addListener(() => {
-  if (user_signed_in) GenerateSong().then(DisplaySong);
+chrome.runtime.onConnect.addListener(function (port) {
+  if (user_signed_in) {
+    port.onMessage.addListener(function (msg) {
+      GenerateSong().then(() => {
+        if (msg == "song request") {
+          if (NO_FOLLOW) {
+            port.postMessage(JSON.stringify({err: "no-follow"}));
+          } else {
+            port.postMessage(JSON.stringify({name : SONG_NAME, img : SONG_IMAGE_URL, err : ""}));
+          }
+        } else {
+          console.log("msg not recognized");
+        }
+      });
+    });
+  }
 });
